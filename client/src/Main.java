@@ -6,24 +6,9 @@ import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) {
-        String message;
+        //TODO  don't let them request chats until they're logged in
         InetSocketAddress address = new InetSocketAddress(args[0] , Integer.parseInt(args[1]));
-        Scanner sc = new Scanner(System.in);
-        try {
-            SocketChannel channel = SocketChannel.open();
-            channel.connect(address);
-            ByteBuffer buffer = ByteBuffer.allocate(256);
-            do{
-                message = sc.next();
-                buffer.put(message.getBytes());
-                buffer.flip();
-                channel.write(buffer);
-                buffer.clear();
-                channel.read(buffer);
-                message = new String(buffer.array());
-            }while(message.equals("quit"));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        new NetworkHandler(address);
+        new UserHandler();
     }
 }

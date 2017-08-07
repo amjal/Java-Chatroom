@@ -10,8 +10,9 @@ import java.util.Set;
 
 public class Main {
     public static void main(String[] args) {
-        InetSocketAddress address = new InetSocketAddress(Integer.parseInt(args[0]));
-        Selector selector = null;
+        InetSocketAddress address = new InetSocketAddress(Integer.parseInt("4556"));
+        new NetworkHandler(address);
+        /*Selector selector = null;
         ServerSocketChannel serverSocketChannel = null;
         String message;
         try {
@@ -70,6 +71,6 @@ public class Main {
                     buffer.clear();
                 }
             }
-        }
+        }*/
     }
 }
