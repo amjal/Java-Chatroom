@@ -1,5 +1,7 @@
 package Logic;
 
+import Messages.LogoffMessage;
+
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -37,7 +39,15 @@ public class TCPReader extends Thread implements ConnectionReceptionListener{
                 ByteBuffer buffer = (ByteBuffer) key.attachment();
                 SocketChannel connection = (SocketChannel) key.channel();
                 try {
-                    connection.read(buffer);
+                    if(connection.read(buffer) == -1){
+                        Client client = NetworkHandler.addressTable.get(connection.getRemoteAddress());
+                        key.cancel();
+                        NetworkHandler.IDTable.remove(client.id);
+                        NetworkHandler.chatNetwork.removeClient(client);
+                        NetworkHandler.addressTable.remove(client.address);
+                        System.out.println("***ONLINE CLIENTS: "+ NetworkHandler.addressTable.size()+" ***");
+                        continue;
+                    }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

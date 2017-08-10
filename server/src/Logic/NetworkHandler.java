@@ -1,5 +1,6 @@
 package Logic;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.*;
@@ -10,16 +11,38 @@ public class NetworkHandler {
     protected static Hashtable<SocketAddress , Client> addressTable;
     private  static LinkedHashMap<Client , byte[]> receivedMessages;
     private static LinkedHashMap<Client , byte[]> toSendMessages;
+    protected TCPWriter tcpWriter;
+    protected TCPReader tcpReader;
+    protected MessageManager messageManager;
+    protected ConnectionAccepter connectionAccepter;
     public NetworkHandler(InetSocketAddress address){
         chatNetwork = new Graph();
         IDTable = new Hashtable<>();
         addressTable = new Hashtable<>();
         receivedMessages = new LinkedHashMap<>();
         toSendMessages = new LinkedHashMap<>();
-        ConnectionAccepter connectionAccepter = new ConnectionAccepter(address);
-        connectionAccepter.addConnectionReceptionListener(new TCPReader());
-        connectionAccepter.addConnectionReceptionListener(new TCPWriter());
-        new MessageManager();
+        connectionAccepter = new ConnectionAccepter(address);
+        tcpReader = new TCPReader();
+        tcpWriter = new TCPWriter();
+        connectionAccepter.addConnectionReceptionListener(tcpReader);
+        connectionAccepter.addConnectionReceptionListener(tcpWriter);
+        messageManager = new MessageManager();
+    }
+    public void end(){
+        try {
+            tcpWriter.join();
+            tcpReader.join();
+            messageManager.join();
+            connectionAccepter.join();
+            connectionAccepter.serverSocketChannel.close();
+            connectionAccepter.selector.close();
+            tcpWriter.selector.close();
+            tcpReader.selector.close();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
     public static synchronized boolean toSendMessagesContainsKey(Client client){
         return toSendMessages.containsKey(client);

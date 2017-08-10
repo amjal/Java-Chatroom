@@ -27,6 +27,7 @@ class ConnectionAccepter extends Thread{
         } catch (IOException e) {
             e.printStackTrace();
         }
+        System.out.println("***SUCCESSFULLY CONFIGURED SERVER***");
         start();
     }
     @Override
@@ -50,6 +51,7 @@ class ConnectionAccepter extends Thread{
                     for(ConnectionReceptionListener crl:connectionReceptionListeners){
                         crl.onNewConnectionReceived(connection);
                     }
+                    System.out.println("***ONLINE CLIENTS: "+ NetworkHandler.addressTable.size()+" ***");
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

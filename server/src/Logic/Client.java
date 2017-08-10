@@ -10,6 +10,6 @@ public class Client {
         this.id = id;
     }
     public Client(SocketAddress address){
-        this(null , address);
+        this("" , address);
     }
 }

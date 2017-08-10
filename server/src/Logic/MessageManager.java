@@ -125,7 +125,6 @@ public class MessageManager extends Thread{
                         break;
                     case MessageTypes.LOGOFF:
                         NetworkHandler.IDTable.remove(client.id);
-                        NetworkHandler.addressTable.remove(client.address);
                         NetworkHandler.chatNetwork.removeClient(client);
                         ServerMessage success = new ServerMessage("***SUCCESSFULLY LOGGED-OFF***");
                         success.serialize();

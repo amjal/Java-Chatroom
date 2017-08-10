@@ -8,13 +8,13 @@ import java.util.Set;
 
 public class UserHandler{
     protected boolean loggedIn = false;
+    ServiceStopListener ssl;
     public UserHandler(){
-        offlineStageHandler();
-    }
-    public void offlineStageHandler(){
-        //TODO write the offline stage code
         new ConsoleReader();
         new ConsoleWriter();
+    }
+    public void addServiceStopListener(ServiceStopListener ssl){
+        this.ssl = ssl;
     }
     public Message interpret(String input){
         Message output = null;
@@ -27,7 +27,7 @@ public class UserHandler{
             else
                 System.out.println("***YOU ARE ALREADY LOGGED-IN***");
         }
-        else if (input.matches("logoff")) {
+        else if (input.matches("logoff") || input.matches("logout")) {
             if(loggedIn) {
                 output = new LogoffMessage();
                 loggedIn = false;
@@ -37,7 +37,7 @@ public class UserHandler{
         }
         else if (input.matches("help")){
             System.out.println("command: login [ID]\ndescription: logs you in with the ID specified\n\n" +
-                    "command: logoff\n\tdescription: logs you off\n\n" +
+                    "command: logoff/logout\n\tdescription: logs you off\n\n" +
                     "command: @[ID] [message]\n\tdescription: sends the specified message to the specified ID\n\n" +
                     "command: invite [ID]\n\tdescription: invites the specified ID to chat if they're online\n\n" +
                     "command: accept [ID]\n\tdescription: accepts invitation from specified ID if they're online\n\n" +
@@ -45,7 +45,9 @@ public class UserHandler{
                     "command: invitations -opt\n\tdescription: opt:'i' provides you with a list of those you invited" +
                     " and opt:'o' provides you with a list of those invited you\n\n" +
                     "command: chat -opt [ID]\n\tdescription: opt:'l' provides you with a list of current chats and " +
-                    "opt:'q' quits chat with specified ID\n\n");
+                    "opt:'q' quits chat with specified ID\n\n" +
+                    "command: stop\n\tdescription: disconnects from the server\n\n" +
+                    "command: quit\n\tdescription: quits the program\n\n");
         }
         else if (input.matches("@[a-zA-Z_0-9]+ .+") && loggedIn) {
             String ID = input.substring(1,input.indexOf(" "));
@@ -78,9 +80,10 @@ public class UserHandler{
             output = new QuitChatRequest(ID);
         }
         else if(input.matches("stop")){
-            output = new LogoffMessage();
-            //TODO stop all threads via listener
-            //TODO find a way to get into offlineStageHandler safely
+            ssl.notConnectedStage();
+        }
+        else if(input.matches("quit")){
+            System.out.println("***FIRST DISCONNECT FROM THE SERVER USING COMMAND \"STOP\"***");
         }
         else if(!loggedIn){
             System.out.println("***YOU ARE NOT LOGGED-IN***");
@@ -115,7 +118,7 @@ public class UserHandler{
     }
     private class ConsoleWriter implements Runnable{
         Thread thread;
-        public ConsoleWriter(){
+        public ConsoleWriter() {
             thread = new Thread(this);
             thread.start();
         }
@@ -124,6 +127,7 @@ public class UserHandler{
             while(true){
                 if(!NetworkHandler.receivedMessages.isEmpty()){
                     while(!NetworkHandler.receivedMessages.isEmpty()){
+                        System.out.println("ok");
                         byte[] messageArr = NetworkHandler.receivedMessages.poll();
                         switch (messageArr[0]) {
                             case MessageTypes.SERVER_MESSAGE:
@@ -165,7 +169,7 @@ public class UserHandler{
                     }
                 }
                 try {
-                    Thread.sleep(300);
+                    Thread.sleep(100);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }

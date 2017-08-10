@@ -9,7 +9,4 @@ public class Client {
         this.address = address;
         this.id = id;
     }
-    public Client(SocketAddress address){
-        this(null , address);
-    }
 }

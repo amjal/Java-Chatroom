@@ -1,5 +1,7 @@
 package Logic;
 
+import Messages.MessageTypes;
+
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -42,6 +44,8 @@ public class TCPWriter extends Thread implements ConnectionReceptionListener{
                     Client client = NetworkHandler.addressTable.get(address);
                     if(NetworkHandler.toSendMessagesContainsKey(client)){
                         byte[] message = NetworkHandler.toSendMessagesGet(client);
+                        if(message[0] == MessageTypes.LOGOFF)
+                            NetworkHandler.addressTable.remove(client);
                         buffer.put(message);
                         buffer.flip();
                         connection.write(buffer);
