@@ -48,7 +48,7 @@ public class TCPReader extends Thread implements ConnectionReceptionListener{
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                if(opt == -1){
+                if(opt == -1){//for when the connection is reset or closed by the peer
                     Client client = NetworkHandler.addressTable.get(address);
                     key.cancel();
                     NetworkHandler.IDTable.remove(client.getID());

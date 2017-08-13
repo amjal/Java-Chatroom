@@ -12,6 +12,10 @@ public class Main {
         }catch (ArrayIndexOutOfBoundsException e){
             System.out.println("***BE SURE TO ENTER THE IP ADDRESS AS WELL AS PORT NUMBER WHEN YOU ARE OPENNING " +
                     "THE APPLICATION***");
+            //TODO keep asking for ip and port in here
+            //TODO encryption
+            //TODO working with files and keeping user info
+            //TODO sending files
         }
     }
 }

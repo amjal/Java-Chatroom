@@ -4,6 +4,9 @@ import java.util.AbstractMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 
+/**
+ * This graph models the connections between users in the chat room and is implemented by adjacency method
+ */
 public class Graph {
     private LinkedHashSet<Client> clients;
     private LinkedHashSet<AbstractMap.SimpleEntry<Client,Client>> links;

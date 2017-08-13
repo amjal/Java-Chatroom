@@ -5,6 +5,9 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.*;
 
+/**
+ * This class is more of a thread handler than a network handler. besides, it equips the program with user input
+ */
 public class NetworkHandler {
     protected static Graph chatNetwork;
     protected static Hashtable<String , Client> IDTable;
@@ -40,6 +43,11 @@ public class NetworkHandler {
             }
         }while (true);
     }
+
+    /**
+     * Method below guarantees a thread safe exit. it wakes up the blocking selectors, then closes the
+     * connections and uses threads' own kill method two terminate threads.
+     */
     public void end(){
         try {
             connectionAccepter.serverSocketChannel.close();
@@ -61,6 +69,7 @@ public class NetworkHandler {
             e.printStackTrace();
         }
     }
+
     public static synchronized boolean toSendMessagesContainsKey(Client client){
         return toSendMessages.containsKey(client);
     }

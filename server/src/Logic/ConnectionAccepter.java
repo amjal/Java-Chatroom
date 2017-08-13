@@ -9,6 +9,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * This class's sole purpose is to accept new connections to the server. It registers a non-blocking
+ * ServerSocketChannel with a selector with only the accept operation. The rest is easy to figure out if your are
+ * familiar with NIO. This class holds a list of listeners. These listeners are basically our TCPReader and TCPWriter
+ * objects. They are listening for arrival of new connections because they should register their own selectors with
+ * the arriving connections.
+ */
 class ConnectionAccepter extends Thread{
     protected ServerSocketChannel serverSocketChannel;
     protected Selector selector;

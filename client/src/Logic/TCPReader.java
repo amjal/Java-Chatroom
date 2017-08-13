@@ -20,7 +20,7 @@ public class TCPReader extends TCPCommunicator implements Runnable{
             threadEnterPointChecker();
             try {
                 int opt = connection.read(buffer);
-                if(opt == -1){
+                if(opt == -1){//for when the connection is closed by peer
                     System.out.println("***CONNECTION LOST***");
                     ssl.notConnectedStage();
                 }

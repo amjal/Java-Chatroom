@@ -5,6 +5,10 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+/**
+ * This class reads received messages,figures out what they are, and does the corresponding operations which in
+ * almost every case means sending the proper message to the proper client.
+ */
 public class MessageManager extends Thread{
     boolean go = true;
     public MessageManager(){
