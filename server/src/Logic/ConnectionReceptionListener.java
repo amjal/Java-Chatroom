@@ -2,6 +2,6 @@ package Logic;
 
 import java.nio.channels.SocketChannel;
 
-public interface ConnectionReceptionListener {
+public interface ConnectionReceptionListener{
     void onNewConnectionReceived(SocketChannel connection);
 }

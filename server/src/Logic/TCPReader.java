@@ -1,7 +1,5 @@
 package Logic;
 
-import Messages.LogoffMessage;
-
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -15,6 +13,7 @@ import java.util.Set;
 
 public class TCPReader extends Thread implements ConnectionReceptionListener{
     Selector selector;
+    boolean go = true;
     public TCPReader(){
         try {
             selector = Selector.open();
@@ -23,9 +22,12 @@ public class TCPReader extends Thread implements ConnectionReceptionListener{
         }
         start();
     }
+    public void kill(){
+        go = false;
+    }
     @Override
     public void run(){
-        while(true){
+        while(go){
             try {
                 selector.selectNow();
             } catch (IOException e) {
@@ -38,28 +40,28 @@ public class TCPReader extends Thread implements ConnectionReceptionListener{
                 iterator.remove();
                 ByteBuffer buffer = (ByteBuffer) key.attachment();
                 SocketChannel connection = (SocketChannel) key.channel();
+                SocketAddress address = null;
+                int opt=0;
                 try {
-                    if(connection.read(buffer) == -1){
-                        Client client = NetworkHandler.addressTable.get(connection.getRemoteAddress());
-                        key.cancel();
-                        NetworkHandler.IDTable.remove(client.id);
-                        NetworkHandler.chatNetwork.removeClient(client);
-                        NetworkHandler.addressTable.remove(client.address);
-                        System.out.println("***ONLINE CLIENTS: "+ NetworkHandler.addressTable.size()+" ***");
-                        continue;
-                    }
+                    opt = connection.read(buffer);
+                    address = connection.getRemoteAddress();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                buffer.flip();
-                byte[] temp = Arrays.copyOfRange(buffer.array() , buffer.position() , buffer.limit());
-                try {
-                    SocketAddress address = connection.getRemoteAddress();
-                    NetworkHandler.receivedMessagesPut(NetworkHandler.addressTable.get(address) , temp);
-                } catch (IOException e) {
-                    e.printStackTrace();
+                if(opt == -1){
+                    Client client = NetworkHandler.addressTable.get(address);
+                    key.cancel();
+                    NetworkHandler.IDTable.remove(client.getID());
+                    NetworkHandler.chatNetwork.removeClient(client);
+                    NetworkHandler.addressTable.remove(client.getAddress());
+                    System.out.println("***ONLINE CLIENTS: "+ NetworkHandler.addressTable.size()+" ***");
                 }
-                buffer.clear();
+                else {
+                    buffer.flip();
+                    byte[] temp = Arrays.copyOfRange(buffer.array(), buffer.position(), buffer.limit());
+                    NetworkHandler.receivedMessagesPut(NetworkHandler.addressTable.get(address), temp);
+                    buffer.clear();
+                }
             }
             try {
                 sleep(200);

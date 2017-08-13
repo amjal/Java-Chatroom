@@ -27,20 +27,37 @@ public class NetworkHandler {
         connectionAccepter.addConnectionReceptionListener(tcpReader);
         connectionAccepter.addConnectionReceptionListener(tcpWriter);
         messageManager = new MessageManager();
+        inputHandler();
+    }
+    public void inputHandler(){
+        Scanner sc = new Scanner(System.in);
+        String input;
+        do{
+            input = sc.nextLine();
+            if(input.equals("quit")) {
+                end();
+                return;
+            }
+        }while (true);
     }
     public void end(){
         try {
+            connectionAccepter.serverSocketChannel.close();
+            connectionAccepter.selector.wakeup();
+            connectionAccepter.kill();
+            connectionAccepter.join();
+            connectionAccepter.selector.close();
+            tcpWriter.kill();
+            tcpReader.kill();
+            messageManager.kill();
             tcpWriter.join();
             tcpReader.join();
-            messageManager.join();
-            connectionAccepter.join();
-            connectionAccepter.serverSocketChannel.close();
-            connectionAccepter.selector.close();
             tcpWriter.selector.close();
             tcpReader.selector.close();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            System.out.println("***CLOSED EVERYTHING***");
         } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }

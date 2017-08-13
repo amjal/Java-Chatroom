@@ -32,7 +32,7 @@ public class Graph {
         while(iterator.hasNext()){
             AbstractMap.SimpleEntry<Client , Client> pair = iterator.next();
             if(pair.getValue().equals(client) || pair.getKey().equals(client)){
-                links.remove(pair);
+                iterator.remove();
             }
         }
     }
@@ -70,7 +70,7 @@ public class Graph {
         return output;
     }
 
-    public LinkedHashSet<Client> inviters(Client client){
+    public LinkedHashSet<Client> invitors(Client client){
         LinkedHashSet<Client> output = new LinkedHashSet<>();
         Iterator<Client> iterator = clients.iterator();
         while (iterator.hasNext()){
@@ -91,5 +91,8 @@ public class Graph {
             }
         }
         return output;
+    }
+    public int numberOfChats(){
+        return links.size();
     }
 }

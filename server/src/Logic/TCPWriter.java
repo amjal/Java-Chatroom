@@ -14,9 +14,8 @@ import java.util.Set;
 
 public class TCPWriter extends Thread implements ConnectionReceptionListener{
     Selector selector;
-    MessageManager messageManager;
+    boolean go = true;
     public TCPWriter(){
-        messageManager = new MessageManager();
         try {
             selector = Selector.open();
         } catch (IOException e) {
@@ -24,9 +23,12 @@ public class TCPWriter extends Thread implements ConnectionReceptionListener{
         }
         start();
     }
+    public void kill(){
+        go = false;
+    }
     @Override
     public void run(){
-        while(true){
+        while(go){
             try {
                 selector.selectNow();
             } catch (IOException e) {
@@ -44,8 +46,6 @@ public class TCPWriter extends Thread implements ConnectionReceptionListener{
                     Client client = NetworkHandler.addressTable.get(address);
                     if(NetworkHandler.toSendMessagesContainsKey(client)){
                         byte[] message = NetworkHandler.toSendMessagesGet(client);
-                        if(message[0] == MessageTypes.LOGOFF)
-                            NetworkHandler.addressTable.remove(client);
                         buffer.put(message);
                         buffer.flip();
                         connection.write(buffer);
@@ -57,7 +57,7 @@ public class TCPWriter extends Thread implements ConnectionReceptionListener{
                 }
             }
             try {
-                sleep(200);
+                sleep(100);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

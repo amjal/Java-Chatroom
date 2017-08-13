@@ -15,6 +15,7 @@ public class NetworkHandler implements ServiceStopListener{
     InetSocketAddress address;
     TCPReader tcpReader;
     TCPWriter tcpWriter;
+    UserHandler userHandler;
     public NetworkHandler(InetSocketAddress address){
         receivedMessages = new ArrayDeque<>();
         toSendMessages = new ArrayDeque<>();
@@ -22,7 +23,32 @@ public class NetworkHandler implements ServiceStopListener{
         this.address = address;
         tcpReader = new TCPReader();
         tcpWriter = new TCPWriter();
+        userHandler = new UserHandler();
+        userHandler.addServiceStopListener(this);
+        tcpReader.addServiceStopListener(this);
         notConnectedStage();
+    }
+    @Override
+    public void tryConnection(String input){
+        Pattern startPattern = Pattern.compile("start",Pattern.CASE_INSENSITIVE);
+        Pattern quitPattern = Pattern.compile("quit",Pattern.CASE_INSENSITIVE);
+        if(startPattern.matcher(input).matches()) {
+            try {
+                connection = SocketChannel.open();
+                connection.connect(address);
+            } catch (IOException e) {
+                System.out.println("***CONNECTION REFUSED***");
+            }
+        }
+        else if(quitPattern.matcher(input).matches()){
+            System.exit(0);
+        }
+        if(connection != null && connection.isConnected()){
+            System.out.println("***SUCCESSFULLY CONNECTED TO SERVER***");
+            tcpReader.resume(connection);
+            tcpWriter.resume(connection);
+            userHandler.resume();
+        }
     }
 
     @Override
@@ -35,26 +61,6 @@ public class NetworkHandler implements ServiceStopListener{
         }
         tcpReader.suspend();
         tcpWriter.suspend();
-        while (connection == null || !connection.isConnected()) {
-            System.out.println("***TYPE IN \"START\" TO TRY TO CONNECT TO SERVER AND \"QUIT\" TO QUIT" +
-                    "(CASE INSENSITIVE)***\n");
-            Pattern startPattern = Pattern.compile("start",Pattern.CASE_INSENSITIVE);
-            Pattern quitPattern = Pattern.compile("quit",Pattern.CASE_INSENSITIVE);
-            String input = sc.nextLine();
-            if(startPattern.matcher(input).matches()) {
-                try {
-                    connection = SocketChannel.open();
-                    connection.connect(address);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            else if(quitPattern.matcher(input).matches()){
-                System.exit(0);
-            }
-        }
-        System.out.println("***SUCCESSFULLY CONNECTED TO SERVER***");
-        tcpReader.resume(connection);
-        tcpWriter.resume(connection);
+        userHandler.suspend();
     }
 }

@@ -3,24 +3,35 @@ package Logic;
 import Messages.*;
 
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Scanner;
-import java.util.Set;
 
 public class UserHandler{
     protected boolean loggedIn = false;
     ServiceStopListener ssl;
+    ConsoleWriter consoleWriter;
+    ConsoleReader consoleReader;
+    boolean go = false;
     public UserHandler(){
-        new ConsoleReader();
-        new ConsoleWriter();
+        consoleWriter = new ConsoleWriter();
+        consoleReader = new ConsoleReader();
     }
     public void addServiceStopListener(ServiceStopListener ssl){
         this.ssl = ssl;
+    }
+    public void suspend(){
+        go = false;
+        loggedIn = false;
+    }
+    synchronized public void resume(){
+        go = true;
+        this.notifyAll();
     }
     public Message interpret(String input){
         Message output = null;
         if (input.matches("login [a-zA-Z_0-9]+")){
             if(!loggedIn) {
-                String ID = input.substring(input.indexOf(" "));
+                String ID = input.substring(input.indexOf(" ")+1);
                 output = new LoginMessage(ID);
                 loggedIn = true;
             }
@@ -55,21 +66,21 @@ public class UserHandler{
             output = new ChatMessage(ID , message);
         }
         else if(input.matches("invite [a-zA-Z_0-9]+") && loggedIn){
-            String ID = input.substring(input.indexOf(" "));
+            String ID = input.substring(input.indexOf(" ")+1);
             output = new InviteMessage(ID);
         }
         else if(input.matches("accept [a-zA-Z_0-9]+") && loggedIn){
-            String ID = input.substring(input.indexOf(" "));
+            String ID = input.substring(input.indexOf(" ")+1);
             output = new AcceptMessage(ID);
         }
         else if(input.matches("reject [a-zA-Z_0-9]+") && loggedIn){
-            String ID = input.substring(input.indexOf(" "));
+            String ID = input.substring(input.indexOf(" ")+1);
             output = new RejectMessage(ID);
         }
-        else if(input.matches("invitations -i") && loggedIn){
+        else if((input.matches("invite +-i +-l *") || input.matches("invite +-l +-i *")) && loggedIn){
             output = new InvitationListRequest(0);
         }
-        else if(input.matches("invitations -o") && loggedIn){
+        else if((input.matches("invite +-o +-l *") || input.matches("invite +-l +-o *")&& loggedIn)){
             output = new InvitationListRequest(1);
         }
         else if(input.matches("chat -l") && loggedIn){
@@ -105,14 +116,22 @@ public class UserHandler{
         public void run() {
             String input;
             do{
-               input = sc.nextLine();
-               Message toSendMessage = interpret(input);
-               try {
-                   toSendMessage.serialize();
-                   NetworkHandler.toSendMessages.add(toSendMessage.getArray());
-               }catch(NullPointerException e){
-
-               }
+                if(!go) {
+                    System.out.println("***TYPE IN \"START\" TO TRY TO CONNECT TO SERVER AND \"QUIT\" TO QUIT" +
+                            "(CASE INSENSITIVE)***\n");
+                }
+                input = sc.nextLine();
+                if(!go){
+                    ssl.tryConnection(input);
+                }
+                else {
+                    Message toSendMessage = interpret(input);
+                    try {
+                        toSendMessage.serialize();
+                        NetworkHandler.toSendMessages.add(toSendMessage.getArray());
+                    } catch (NullPointerException e) {
+                    }
+                }
             }while(true);
         }
     }
@@ -125,11 +144,24 @@ public class UserHandler{
         @Override
         public void run() {
             while(true){
+                synchronized (UserHandler.this){
+                    if(!go) {
+                        try {
+                            UserHandler.this.wait();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
                 if(!NetworkHandler.receivedMessages.isEmpty()){
                     while(!NetworkHandler.receivedMessages.isEmpty()){
-                        System.out.println("ok");
                         byte[] messageArr = NetworkHandler.receivedMessages.poll();
                         switch (messageArr[0]) {
+                            case MessageTypes.CHAT_MESSAGE:
+                                ChatMessage chatMessage = new ChatMessage(messageArr);
+                                chatMessage.deserialize();
+                                System.out.println(chatMessage.getID()+": "+chatMessage);
+                                break;
                             case MessageTypes.SERVER_MESSAGE:
                                 ServerMessage message = new ServerMessage(messageArr);
                                 message.deserialize();
@@ -138,32 +170,39 @@ public class UserHandler{
                             case MessageTypes.CHAT_LIST_RESULT:
                                 ChatListResult result = new ChatListResult(messageArr);
                                 result.deserialize();
-                                Set<Client> list = result.getChatList();
-                                Iterator<Client> iterator = list.iterator();
+                                LinkedHashSet<String> list = result.getChatList();
+                                Iterator<String> iterator = list.iterator();
                                 if (list.size() == 0) {
                                     System.out.println("***YOU ARE NOT CHATTING WITH ANYBODY***");
                                 } else {
                                     System.out.println("***YOU ARE CURRENTLY CHATTING WITH:***");
+                                    int c=0;
                                     while (iterator.hasNext()) {
-                                        Client c = iterator.next();
-                                        System.out.println(c.id);
+                                        System.out.println((++c)+"- "+iterator.next());
                                     }
                                 }
                                 break;
                             case MessageTypes.INVITATION_LIST_RESULT:
                                 InvitationListResult invitationResult = new InvitationListResult(messageArr);
                                 invitationResult.deserialize();
-                                Set<Client> invitationList = invitationResult.getList();
+                                LinkedHashSet<String> invitationList = invitationResult.getList();
                                 iterator = invitationList.iterator();
                                 if(invitationList.size() == 0)
                                     System.out.println("***THE LIST YOU REQUESTED IS EMPTY***");
                                 else {
                                     System.out.println("***THE LIST YOU REQUESTED:***");
+                                    int c=0;
                                     while (iterator.hasNext()) {
-                                        Client client = iterator.next();
-                                        System.out.println(client.id);
+                                        System.out.println((++c)+"- "+iterator.next());
                                     }
                                 }
+                                break;
+                            case MessageTypes.LOGIN: //this indicates login failure
+                                LoginMessage loginMessage = new LoginMessage(messageArr);
+                                loginMessage.deserialize();
+                                System.out.println("***"+loginMessage.getID()+" IS ALREADY LOGGED-IN " +
+                                        "THE SERVER***");
+                                loggedIn = false;
                                 break;
                         }
                     }

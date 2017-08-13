@@ -2,15 +2,20 @@ package Logic;
 
 import Messages.*;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 public class MessageManager extends Thread{
+    boolean go = true;
     public MessageManager(){
        start();
     }
+    public void kill(){
+        go = false;
+    }
     @Override
     public void run(){
-        while(true){
+        while(go){
             Set<Client> clients = NetworkHandler.receivedMessagesKeySet();
             Iterator<Client> iterator = clients.iterator();
             while (iterator.hasNext()){
@@ -21,23 +26,20 @@ public class MessageManager extends Thread{
                     case MessageTypes.LOGIN:
                         LoginMessage loginMessage = new LoginMessage(message);
                         loginMessage.deserialize();
-                        if(NetworkHandler.IDTable.containsValue(loginMessage.getID()))
+                        if(NetworkHandler.IDTable.containsKey(loginMessage.getID()))
                         {
-                            ServerMessage err = new ServerMessage("***ID ALREADY LOGGED IN***");
-                            err.serialize();
-                            NetworkHandler.toSendMessagesPut(client , err.getArray());
-                            NetworkHandler.addressTable.remove(client.address);
+                            NetworkHandler.toSendMessagesPut(client , loginMessage.getArray());
                         }
                         else{
                             NetworkHandler.IDTable.put(loginMessage.getID() , client);
                             NetworkHandler.chatNetwork.addClient(client);
-                            client.id = loginMessage.getID();
-                            ServerMessage success = new ServerMessage("***SUCCESSFULLY LOGGED IN***");
+                            client.setID(loginMessage.getID());
+                            ServerMessage success = new ServerMessage("***SUCCESSFULLY LOGGED-IN***");
                             success.serialize();
                             NetworkHandler.toSendMessagesPut(client , success.getArray());
                         }
                         break;
-                    case MessageTypes.ACCEPT_MESSAGE:
+                    case MessageTypes.ACCEPT:
                         AcceptMessage acceptMessage = new AcceptMessage(message);
                         acceptMessage.deserialize();
                         if(NetworkHandler.IDTable.containsKey(acceptMessage.getID())) {
@@ -46,7 +48,7 @@ public class MessageManager extends Thread{
                             ServerMessage success = new ServerMessage("***YOU CAN NOW CHAT WITH "+acceptMessage.getID()+"***");
                             success.serialize();
                             NetworkHandler.toSendMessagesPut(client , success.getArray());
-                            success.setMessage("***"+acceptedClient.id+" HAS ACCEPTED YOUR CHAT REQUEST***");
+                            success.setMessage("***"+client.getID()+" HAS ACCEPTED YOUR CHAT REQUEST***");
                             success.serialize();
                             NetworkHandler.toSendMessagesPut(acceptedClient , success.getArray());
                         }
@@ -57,7 +59,7 @@ public class MessageManager extends Thread{
                         }
                         break;
                     case MessageTypes.CHAT_LIST_REQUEST:
-                        Set<Client> chatList = NetworkHandler.chatNetwork.chatBuddies(client);
+                        LinkedHashSet<Client> chatList = NetworkHandler.chatNetwork.chatBuddies(client);
                         ChatListResult chatListResult = new ChatListResult(chatList);
                         chatListResult.serialize();
                         NetworkHandler.toSendMessagesPut(client , chatListResult.getArray());
@@ -72,59 +74,60 @@ public class MessageManager extends Thread{
                             NetworkHandler.toSendMessagesPut(client , err.getArray());
                         }
                         else if(!NetworkHandler.chatNetwork.linkExists(chatPartner , client)) {
-                            ServerMessage err = new ServerMessage("***" + chatPartner.id + " IS NOT CHATTING WITH YOU***");
+                            ServerMessage err = new ServerMessage("***" + chatPartner.getID()+ " IS NOT CHATTING WITH YOU***");
                             err.serialize();
                             NetworkHandler.toSendMessagesPut(client , err.getArray());
                         }
                         else{
-                            chatMessage.setID(client.id);
+                            chatMessage.setID(client.getID());
                             chatMessage.serialize();
                             NetworkHandler.toSendMessagesPut(chatPartner , chatMessage.getArray());
                         }
                         break;
                     case MessageTypes.I_INVITATION_LIST:
-                        Set<Client> invitedList = NetworkHandler.chatNetwork.invitedBy(client);
+                        LinkedHashSet<Client> invitedList = NetworkHandler.chatNetwork.invitedBy(client);
                         InvitationListResult invitationListResult = new InvitationListResult(invitedList);
                         invitationListResult.serialize();
                         NetworkHandler.toSendMessagesPut(client , invitationListResult.getArray());
                         break;
                     case MessageTypes.O_INVITATION_LIST:
-                        Set<Client> inviterList = NetworkHandler.chatNetwork.inviters(client);
+                        LinkedHashSet<Client> inviterList = NetworkHandler.chatNetwork.invitors(client);
                         invitationListResult = new InvitationListResult(inviterList);
                         invitationListResult.serialize();
                         NetworkHandler.toSendMessagesPut(client , invitationListResult.getArray());
                         break;
-                    case MessageTypes.INVITE_MESSAGE:
+                    case MessageTypes.INVITE:
                         InviteMessage inviteMessage = new InviteMessage(message);
                         inviteMessage.deserialize();
                         Client invited  = NetworkHandler.IDTable.get(inviteMessage.getID());
                         if(invited == null){
-                            ServerMessage err = new ServerMessage("***"+inviteMessage.getID()+" IS OFFLINE");
+                            ServerMessage err = new ServerMessage("***"+inviteMessage.getID()+" IS OFFLINE***");
                             err.serialize();
                             NetworkHandler.toSendMessagesPut(client , err.getArray());
                         }
                         else if(NetworkHandler.chatNetwork.linkExists(invited , client)){
                             ServerMessage success = new ServerMessage("***YOU WERE INVITED BY "+
-                            invited.id+" BEFORE, YOU'RE CHAT BEGINS NOW***");
+                            invited.getID()+" BEFORE, YOU'RE CHAT BEGINS NOW***");
                             success.serialize();
                             NetworkHandler.toSendMessagesPut(client , success.getArray());
                             success = new ServerMessage("***YOU WERE INVITED BY "+
-                            client.id+", WHOM YOU HAD INVITED BEFORE, YOU'RE CHAT BEGINS NOW***");
+                            client.getID()+", WHOM YOU HAD INVITED BEFORE, YOU'RE CHAT BEGINS NOW***");
                             success.serialize();
                             NetworkHandler.toSendMessagesPut(invited , success.getArray());
                         }
                         else{
+                            NetworkHandler.chatNetwork.addLink(client , invited);
                             ServerMessage success = new ServerMessage("***INVITATION SENT SUCCESSFULLY***");
                             success.serialize();
                             NetworkHandler.toSendMessagesPut(client , success.getArray());
                             success = new ServerMessage("***YOU WERE INVITED BY "+
-                                    client.id+"***");
+                                    client.getID()+"***");
                             success.serialize();
                             NetworkHandler.toSendMessagesPut(invited , success.getArray());
                         }
                         break;
                     case MessageTypes.LOGOFF:
-                        NetworkHandler.IDTable.remove(client.id);
+                        NetworkHandler.IDTable.remove(client.getID());
                         NetworkHandler.chatNetwork.removeClient(client);
                         ServerMessage success = new ServerMessage("***SUCCESSFULLY LOGGED-OFF***");
                         success.serialize();
@@ -137,23 +140,23 @@ public class MessageManager extends Thread{
                         if(otherSide != null){
                             NetworkHandler.chatNetwork.removeLink(client , otherSide);
                             NetworkHandler.chatNetwork.removeLink(otherSide , client);
-                            success = new ServerMessage("***"+ client.id + " HAS STOPPED CHATTING" +
+                            success = new ServerMessage("***"+ client.getID() + " HAS STOPPED CHATTING" +
                                     " WITH YOU***");
                             success.serialize();
                             NetworkHandler.toSendMessagesPut(otherSide , success.getArray());
-                            success = new ServerMessage("*** SUCCESSFULLY QUITED CHATTING WITH "+otherSide.id+" ***");
+                            success = new ServerMessage("*** SUCCESSFULLY QUITED CHATTING WITH "+otherSide.getID()+" ***");
                             success.serialize();
                             NetworkHandler.toSendMessagesPut(client , success.getArray());
                         }
                         break;
-                    case MessageTypes.REJECT_MESSAGE:
+                    case MessageTypes.REJECT:
                         RejectMessage rejectMessage = new RejectMessage(message);
                         rejectMessage.deserialize();
                         Client rejected = NetworkHandler.IDTable.get(rejectMessage.getID());
                         if(rejected != null){
                             NetworkHandler.chatNetwork.removeLink(rejected , client);
-                            success = new ServerMessage("***YOUR INVITATION WAS REJECTD" +
-                                    " BY "+client.id+"***");
+                            success = new ServerMessage("***YOUR INVITATION WAS REJECTED" +
+                                    " BY "+client.getID()+"***");
                             success.serialize();
                             NetworkHandler.toSendMessagesPut(rejected , success.getArray());
                             success = new ServerMessage("***REJECTION SUCCESSFUL***");
@@ -164,7 +167,7 @@ public class MessageManager extends Thread{
                 }
             }
             try {
-                sleep(200);
+                sleep(100);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

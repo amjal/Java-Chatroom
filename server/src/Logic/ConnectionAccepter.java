@@ -3,10 +3,7 @@ package Logic;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.*;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -16,6 +13,7 @@ class ConnectionAccepter extends Thread{
     protected ServerSocketChannel serverSocketChannel;
     protected Selector selector;
     protected List<ConnectionReceptionListener> connectionReceptionListeners;
+    boolean go = true;
     public ConnectionAccepter(InetSocketAddress address){
         try {
             selector = Selector.open();
@@ -30,9 +28,12 @@ class ConnectionAccepter extends Thread{
         System.out.println("***SUCCESSFULLY CONFIGURED SERVER***");
         start();
     }
+    public void kill(){
+        go = false;
+    }
     @Override
     public void run(){
-        while(true){
+        while(go){
             try {
                 selector.select();
             } catch (IOException e) {
@@ -40,18 +41,18 @@ class ConnectionAccepter extends Thread{
             }
             Set<SelectionKey> selectionKeys = selector.selectedKeys();
             Iterator iterator = selectionKeys.iterator();
-            while(iterator.hasNext()){
+            while (iterator.hasNext()) {
                 SelectionKey key = (SelectionKey) iterator.next();
                 iterator.remove();
                 try {
-                    SocketChannel connection = ((ServerSocketChannel)key.channel()).accept();
+                    SocketChannel connection = ((ServerSocketChannel) key.channel()).accept();
                     connection.configureBlocking(false);
                     SocketAddress address = connection.getRemoteAddress();
-                    NetworkHandler.addressTable.put(address , new Client(address));
-                    for(ConnectionReceptionListener crl:connectionReceptionListeners){
+                    NetworkHandler.addressTable.put(address, new Client(address));
+                    for (ConnectionReceptionListener crl : connectionReceptionListeners) {
                         crl.onNewConnectionReceived(connection);
                     }
-                    System.out.println("***ONLINE CLIENTS: "+ NetworkHandler.addressTable.size()+" ***");
+                    System.out.println("***ONLINE CLIENTS: " + NetworkHandler.addressTable.size() + " ***");
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
